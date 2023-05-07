@@ -5,13 +5,14 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSans12pt7b.h>
 #include <Fonts/FreeSerif12pt7b.h>
-#define PIN 10
+#include <EEPROM.h>
+#define PIN A5
 #define DHTTYPE DHT11
-#define MINPRESSURE 300
+#define MINPRESSURE 100
 #define MAXPRESSURE 1000
-#define lampu_1 13
+#define lampu_1 11
 #define lampu_2 12
-#define lampu_3 11
+#define lampu_3 13
 
 uint8_t YP = A1;  // must be an analog pin, use "An" notation!
 uint8_t XM = A2;  // must be an analog pin, use "An" notation!
@@ -51,6 +52,7 @@ int btnHeight = 40;
 int newHeight;
 int oldHeight = 0;
 int heightDiff;
+float suhu;
 
 bool stateButt1;
 bool stateButt2;
@@ -66,7 +68,11 @@ void setup(void) {
   pinMode(lampu_1,OUTPUT);
   pinMode(lampu_2,OUTPUT);
   pinMode(lampu_3,OUTPUT);
+  digitalWrite(lampu_1,HIGH);
+  digitalWrite(lampu_2,HIGH);
+  digitalWrite(lampu_3,HIGH);
   sensor.begin();
+  loadMemory();
   uint16_t ID = tft.readID();
   tft.begin(ID);
   tft.setRotation(1);
@@ -91,10 +97,10 @@ void loop(void) {
         if(butt_3.justReleased()){ butt_3.drawButton(); };
          if(butt_suhu.justReleased()){ butt_suhu.drawButton(); };
   
-        if(butt_1.justPressed()){ butt_1.drawButton(false); stateButt1 = !stateButt1; };
-        if(butt_2.justPressed()){ butt_2.drawButton(false); stateButt2 = !stateButt2; };
-        if(butt_3.justPressed()){ butt_3.drawButton(false); stateButt3 = !stateButt3; };
-        if(butt_suhu.justPressed()){ butt_suhu.drawButton(false); tft.fillScreen(BLACK); page = SENSOR; };
+        if(butt_1.justPressed()){ butt_1.drawButton(true); stateButt1 = !stateButt1; EEPROM.update(1,stateButt1); };
+        if(butt_2.justPressed()){ butt_2.drawButton(true); stateButt2 = !stateButt2; EEPROM.update(2,stateButt2); };
+        if(butt_3.justPressed()){ butt_3.drawButton(true); stateButt3 = !stateButt3; EEPROM.update(3,stateButt3); };
+        if(butt_suhu.justPressed()){ butt_suhu.drawButton(true); tft.fillScreen(BLACK); page = SENSOR; };
 
         if(stateButt1 && page == MENU){  tft.fillCircle(250,100,15,GREEN); }
         else          {  tft.fillCircle(250,100,15,RED); }
@@ -104,25 +110,41 @@ void loop(void) {
       
         if(stateButt3 && page == MENU){  tft.fillCircle(250,200,15,GREEN); }
         else          {  tft.fillCircle(250,200,15,RED); }
+
+        if(stateButt1){delay(100); digitalWrite(lampu_1,LOW); } else {delay(100); digitalWrite(lampu_1,HIGH); }
+        if(stateButt2){delay(100); digitalWrite(lampu_2,LOW); } else {delay(100); digitalWrite(lampu_2,HIGH); }
+        if(stateButt3){delay(100); digitalWrite(lampu_3,LOW); } else {delay(100); digitalWrite(lampu_3,HIGH); }
       
         break;
 
 
      case SENSOR :
+        getSensor();
        if(page != oldPage)  showSensor(); 
+      
        butt_back.press(pres && butt_back.contains(pixel_x, pixel_y));
        if(butt_back.justReleased()){ butt_back.drawButton(); };
-       if(butt_back.justPressed()){ butt_back.drawButton(false); tft.fillScreen(BLACK); page = MENU; };
+       if(butt_back.justPressed()){ butt_back.drawButton(true); tft.fillScreen(BLACK); page = MENU; };
+       Serial.println(String() + "suhu:" + suhu);
        break;
      }
  
-Serial.println(String() + "page:" + page);
+
 if (oldPage == page){ pres = Touch_getXY();     }
 else{ pres=false; }
 
-if(stateButt1){delay(100); digitalWrite(lampu_1,HIGH); } else { digitalWrite(lampu_1,LOW); }
-if(stateButt1){delay(100); digitalWrite(lampu_2,HIGH); } else { digitalWrite(lampu_2,LOW); }
-if(stateButt1){delay(100); digitalWrite(lampu_3,HIGH); } else { digitalWrite(lampu_3,LOW); }
+
+  
+}
+
+void loadMemory(){
+  stateButt1 = EEPROM.read(1);
+  stateButt2 = EEPROM.read(2);
+  stateButt3 = EEPROM.read(3);
+
+  Serial.println(String() + "stateButt1:" + stateButt1);
+  Serial.println(String() + "stateButt2:" + stateButt2);
+  Serial.println(String() + "stateButt3:" + stateButt3);
   
 }
 
@@ -130,14 +152,14 @@ void showScreen()
 { tft.fillScreen(BLACK);
    tft.setTextSize(2);
   tft.setTextColor(WHITE, BLACK);
-  tft.setCursor(0, 10);
+  tft.setCursor(10, 20);
   tft.print("PANEL CONTROLL");
   tft.fillRect(0,50,tft.width(),5,RED);
 
    butt_1.initButton(&tft,  100 , 100, 2 * btnWidth, btnHeight, WHITE, GOLD, BLACK, " TL ", 2);
    butt_2.initButton(&tft,  100 , 150, 2 * btnWidth, btnHeight, WHITE, GOLD, BLACK, "GUDANG", 2);
-   butt_3.initButton(&tft,  100 , 200, 2 * btnWidth, btnHeight, WHITE, GOLD, BLACK, " KERJA ", 2);
-   butt_suhu.initButton(&tft,  240 , 20, 100, btnHeight, WHITE, WHITE, RED, "SUHU", 2);
+   butt_3.initButton(&tft,  100 , 200, 2 * btnWidth, btnHeight, WHITE, GOLD, BLACK, " SOROT ", 2);
+   butt_suhu.initButton(&tft,  260 , 25, 100, btnHeight, BLACK, DARKGREEN, RED, "SUHU", 2);
    butt_1.drawButton(false);
    butt_2.drawButton(false);
    butt_3.drawButton(false);
@@ -147,7 +169,7 @@ void showScreen()
 
 void showSensor()
 { 
-float suhu = sensor.readTemperature();
+
 tft.fillScreen(BLACK);
 tft.setRotation(1);
 tft.fillCircle(XGRAPH, YGRAPH, (WGRAPH/2), BLACK);
@@ -203,6 +225,7 @@ else
     tft.setTextSize(4);
     tft.print("C");
 }
+
 tft.fillRect(130, 255, 80, 4, RED);
 if(suhu <= 100){
 newHeight = map(suhu,0, 100, 0, (HGRAPH-(WGRAPH/2)));
@@ -215,11 +238,15 @@ oldHeight=newHeight; // remember how high bar is
 tft.fillCircle(XGRAPH, (HGRAPH+YGRAPH), ((WGRAPH/2)+5), RED);
   
    butt_back.initButton(&tft,  240 , 200,btnWidth, btnHeight, WHITE, WHITE, RED, "BACK", 2);
-   butt_back.drawButton(false);
+   butt_back.drawButton(true);
    oldPage = page;
   
 }
 
+void getSensor()
+{
+   suhu = sensor.readTemperature();
+}
 bool Touch_getXY(void)
 {
   p = ts.getPoint();
